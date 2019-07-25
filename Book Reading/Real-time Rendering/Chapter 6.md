@@ -121,7 +121,37 @@ The most common filtering techniques for magnification are `nearest neighbor` an
 
 A common solution to the blurriness that accompanies magnification is to use `deail textures`. These are textures that represent fine surface details. Such detail is overlaid onto the magnified texture as a separate texture, at a different scale. The high-frequency repetitive pattern of the detail texture, combined with the low-frequency magnified texture, has a visual effect similar to the use of a single high-resolution texture.
 
-# Chapter 20
+Using bilinear interpolation gives varying grayscale samples across the texture. By remapping the texture looks more like a checkerboard again, while also giving some blend between texels. Using a higher-resolution texture would have a similar effect.
 
-When one or more elements become expensive do we need to use more involved techniques to rein in costs. Here we concentrate on techniques for reducing costs when evaluting materials and lights.For many of these methods, there is an additional processing cost, with the hope being that this expense is made up by the savings obtained. Others trade off between bandwidth and computation, often shifting the bottleneck.
+If bicubic filter are considered too expensive, Quilez proposes a simple technique using a smooth curve to interpolate in between a set of $2 \times 2$ texel.
+
+Too commonly used curves:
+
++ smoothstep curve : $s(x)=x^2(3-2x)$
++ quintic curve : $q(x)=x^3(6x^2-15x+10)$
+
+### Minification
+
+To et a correct color value for each pixel, you should integrate the effect of the texels nfluencing the pixel.
+
+Several different methods are used on GPUs. 
+
+One method is to use the nearest neighbor, which works exactly as the corresponding magnification filter does. This filter may cause severe aliasing problems. Toward the horizon, artifacts appear because only one of the many texels influencing a pixel is chosen to represent the surface. Such artifacts are even more noticeable as the surface moves with respect to the viewer, and are one manifestation of what is called temporal aliasing.
+
+Better solutions are possible. The signal frequency of a texturre depneds upon how closely spaced its texels are on the screen. Due to the Nyquist limit, we need to make sure that the texture's signal frequency is no greater than half the sample frequency. To more fully address this problem, various texture minification algorithm have been developed.
+
+The basic idea behind all texture antialiasing algorithms is the same: to preprocess the texture and create data structures that will help compute a quick approximation of the effect of a set of texels on a pixel.
+
+For real-time work, these algorithms have the characteristic of using a fixed amount of time and resources for execution. In this way, a fixed number of samples are taken per pixel and combined to compute the effect of a (potentially huge) number of texels.
+
+#### Mipmapping
+
+The most popular method of antialiasing for textures is alled `mipmapping`. `Mip` stands for `multum in parvo`, Latin for "many things in a small place", a good name for a process in which the original texture is filtered down repeatedly into smaller images.
+
+When the mipmapping minimization filter is used, the original texture is augmented with a set of smaller versions of the texture before the actual rendering takes place. The texture (at level zero) is downsampled to a quarter of the original area, with each new texel value often computed as the average of four neighbor texels in the original texture. The new, level-one texture is sometimes called a `subtexture` of the original texture. The reduction is performed recursively until one or both of the dimensions of the texture equals one texel. The set of images as a whole is often called a `mipmap chain`.
+
+Two important elements in forming high-quality mipmaps:
+
++ Good filtering
++ Gamma correction
 
