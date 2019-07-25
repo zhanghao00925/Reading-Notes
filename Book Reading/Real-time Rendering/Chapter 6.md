@@ -155,3 +155,37 @@ Two important elements in forming high-quality mipmaps:
 + Good filtering
 + Gamma correction
 
+The common way to form a mipmap level is to take each $2 \times 2$ set of texels and average them to get the mip texel value. The filter used is then a box filter, one of the worst filters possible. As it has the effect of blurring low frequencies unnecessarily, while keeping some high frequencies that cause aliasing. It is better to use a Gaussian, Lanczos, Kaiser, or similar filter.
+
+For textures encoded in a nonlinear space (such as most color textures), ignoring gamma correction when filtering will modify the perceived brightness of the mipmap levels. As you get farther away from the object and the uncorrected mipmaps get used, the object can look darker overall, and contrast and details can also be affected. For this reason, it is important to convert such textures from sRGB to linear space, perform all mipmap filtering in that space, and convert the final results back into sRGB color space for storage.
+
+Some textures have a fundamentally nonlinear relationship to the final shaded color. Although this poses a problem for filtering in general, mipmap generation is particularly sensitive to this issue, since many hundred or thousands of pixels are being filtered. Specialized mipmap generation methods are often neeeded for the best results.
+
+The basic process of accessing this structure while texturing is straightforward. A screen pixel encloses an area on the texture itself. Using the pixel's cell boundaries is not strictly correct, but is used here to simplify the presentation. Texels outside of the cell an influence the pixel's color. The goal is to determine roughly how much of the texture influences the pixel. There are two common measures used to compute $d$ (which OpenGL calls $\lambda$, and which is also known as the texture level of detail). 
+
++ One is to use the longer edge of the quadrilateral formed by the pixel's cell to approximate the pixel's coverage.
++ Another is to use as a measure the largest absolute value of the four differentials $\partial u / \partial x, \partial v / \partial x, \partial u / \partial y, \partial v / \partial y$. Each differential is a measure of amount of change in the texture corrdinate with respect to a screen axis. These gradient values are available to pixel shader programs using Shader Model 3.0 or newer. Since they are based on the differences between values in adjacent pixels, they are not accessible in sections of the pixel shader affected by dynamic flow control.
+
+The intent of computing the coordinate $d$ is to determine where to sample along the mipmap's pyramid axis. The goal is a pixel-to-texel ratio of at least $1 : 1$ to achieve the Nyquist rate. The important principle here is that as the pixel cell comes to include more texel and $d$ increases, a smaller, blurrier version of the texture is accessed. The value $d$ is analogous to a texture level, but instead of an integer value, $d$ has the fractional value of the distance between levels. The texture level above and the level below $d$ location is sampled. This entire process is called `trilinear interpolation` and is performed per pixel.
+
+One user control on the d-coordinate is the `level of detail bias` (LOD bias). This is a value added to $d$, and so it affects the relative perceived sharpness of a texture. A good LOD bias for any given texture will vary with the image type and with the way it is used.
+
+The benefit of mipmapping is that, instead of trying to sum all the texels that affect a pixel individually, precombined sets of texel are accessed and interpolated. This process takes a fix amount of time.
+
+However, mipmapping has several flaws. A major one is `overblurring`.
+
+#### Summed-Area Table
+
+Another method to avoid overblurring is the `summed-area table` (SAT). To use this method, one first creates an array that is the size of the texture but contains more bits of precision for the color stored. At each location in this array, one must compute and store the sum of all the corresponding texture's texel in the rectangle formed by this location and texel $(0,0)$. During texturing, the pixel cell's projection onto the texture is bound by a rectangle. The summed-area table is then accessed to determine the average color of this rectangle, which is passed back as the texture's color for the pixel.
+
+$$
+c=\frac{s[x_{ur},y_{ur}]-s[x_{ur},y_{ll}]-s[x_{ll},y_{ur}]+s[x_{ll},y_{ll}]}{(x_{ur}-x_{ll})(y_{ur}-y_{ll})}
+$$
+
+The summed-area table is an example of what are called `anisotropic filtering` algorithms. Such algorithms retrieve texel values over areas that are not square.
+
+Summed area tables, which give higher quality at a reasonable overall memory cost, can be implemented on mordern GPUs. Improved filtering can be critical to the quality of advanced rendering techniques.
+
+#### Unconstrained Anisotropic Filtering
+
+For current graphics hardware, the most common method to further improve texture filtering is to reuse existing mipmap hardware. The basic idea is that the pixel cell is back-projected, this quadrilateral (quad) on the texture is then sampled several times, and the samples are combined.
