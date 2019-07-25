@@ -44,7 +44,7 @@ Artist often must manualy decompose the model into near-panar pieces. There are 
 
 > Connectivity is important in that sampling artifacts can appear along edges where separate parts of a texture meet.
 
-**This unwrapping process is one facet of a larger field of study, `mesh parameterization`.**
+This unwrapping process is one facet of a larger field of study, **mesh parameterization**.
 
 The texture coordinate space is not always a two-dimensional plane; sometimes it is a three-dimensional volume $(u,v,w)$, with $w$ being depth along the projection direction. Other systems use up to four coordinates, often designated $(s,t,r,q)$, $q$ is used as the fourth value in ahomogeneous coordinate.
 
@@ -64,7 +64,62 @@ Corresponder functions convert texture coordinates to texture-space locations. T
 
 > One example is to use the API to select a portion of an existing texture for display.
 
+Another type of corresponder is a matrix transformation, which can be applied in the vertex or pixel shader. This enables to translating, rotating, scaling, shearing, or projecting the texture on the surface.
 
+> The order of transforms for textures must be the reverse of the order one would expect.
+
+Another class of corresponder functions controls the way an image is applied.
+
++ In OpenGL, this type of corresponder function is called the `wrapping mode`.
++ In DirectX, it is called the `texture addressing mode`
+
+Common corresponder functions of this type are
+
++ wrap, repeat, or tile : is often the default.
++ mirror : this provides some continuity along the edges of the texture.
++ clamp or clamp to edge : This function is useful for avoiding accidentally taking samples from the opposite edge of a texture when bilinear interpolation happens near a texture's edge.
++ border or clamp to border : This function can be  good for rendering decals onto single-color surfaces, for example, as the edge of the texture will blend smoothly with the border color.
+
+These corresponder functions can be assigned differently ofr each texture axis.
+
+A common solution to avoid such `periodicity` problem is to combine the texture values with another, no-tiled, texture. Multiple textures are combianed based on terrain type, altitude, slope, and other factors. Another option to avoid periodicity is to use shader programs to implement specialized corresponder functions that randomly recombine texture patterns or tiles.
+
+The advantage of being able to specify $(u,v)$ values in a range of $[0,1]$ is that image textures with different resolutions can be swapped in without having to change the values stored at the vertices of the model.
+
+### Texture Values
+
+Image texturing constitutes the vast majority of texture use in real-time work, but procedural functions can also be used. In the case of procedural texturing, the process of obtaining a texture value from a texture-space location does not involve a memory lookup, but rather the computation of a function.
+
+The values returned from the texture are optionally transformed before use.
+
+> Shading normals stored in a color texture.
+
+## Image Texturing
+
+For the rest of this chapter, the image texture will be referred to simply as the `texture`. In additon, when we refer to a pixel's `cell`, we mean the screen grid cell surrounding that pixel.
+
+In this section we particularly focus on methods to rapidly sample and filter textured images.
+
+The question of what the float point coordinates of the center of a pixel are : `truncating` and `rounding`.
+
+One term worth explaining at this point is `dependent texture read`, which has two definitions. Today such reads can have an impact on performance, depending on the number of pixels being computed in a batch, among other factors.
+
+The texture image size used in GPUs is usually $2^m \times 2^n$ texel, where $m$ and $n$ are non-negative integers. These are referred to as `power-of-two` (POT) textures. Modern GPUs can handle `non-power-of-two` (NPOT) textures of arbitrary size, which allows a generated image to be treated as a texture. However, some older mobile GPUs may not support mipmapping for NPOT texture. Graphics accelerators have different upper limits on texture size.
+
+What happens if the projected square covers ten times as many pixels as the original image contains (called `magnification`), or ifthe projected square covers only a small part of the screen (`minification`)? The answer is that it depends on what kind of sampling and filtering methods you decide to use for these two separate cases.
+
+However, the desired result is to prevent aliasing in the final rendered image, which in theory requires sampling and filtering the final pixel colors. The distinction here is between filtering the inputs to the shading equation, or filtering its output. As long as the inputs and output are linearly, then filtering the individual texture values is equivalent ot filtering the final colors.
+
+However, many shader input values stored in textures. Standard texture filtering methods may not work well for these textures, resulting in aliasing.
+
+###  Magnification
+
+The most common filtering techniques for magnification are `nearest neighbor` and `bilinear interpolation`. There is also cubic convolution. This enables much higher magnification quality.
+
++ Nearest neighbor : `pixelation` effect occurs, resulting a blocky appearance. While the quality of this method is sometimes poor, it requires only one texel to be fetched per pixel.
++ bilinear interpolation : The result is blurrier, and much of the jaggedness from using the nearest neighbor method has disappeared.
+
+A common solution to the blurriness that accompanies magnification is to use `deail textures`. These are textures that represent fine surface details. Such detail is overlaid onto the magnified texture as a separate texture, at a different scale. The high-frequency repetitive pattern of the detail texture, combined with the low-frequency magnified texture, has a visual effect similar to the use of a single high-resolution texture.
 
 # Chapter 20
 
