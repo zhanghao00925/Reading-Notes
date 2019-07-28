@@ -188,4 +188,40 @@ Summed area tables, which give higher quality at a reasonable overall memory cos
 
 #### Unconstrained Anisotropic Filtering
 
-For current graphics hardware, the most common method to further improve texture filtering is to reuse existing mipmap hardware. The basic idea is that the pixel cell is back-projected, this quadrilateral (quad) on the texture is then sampled several times, and the samples are combined.
+For current graphics hardware, the most common method to further improve texture filtering is to reuse existing mipmap hardware. 
+
+The basic idea is that the pixel cell is back-projected, this quadrilateral (quad) on the texture is then sampled several times, and the samples are combined. Instead of using a single mipmap sample to approximate this quad's coverage, this algorithm uses several squares to cover the quad. The shorter side of the quad can be used to determine $d$ (unlike in mipmapping, where the longer side is often used); this makes the average area smaller (and so less blurred) for each mipmap sample. The quad's longer side is used to create a `line of anisotropy` parallel to the longer side and through the middle of the quad. When the amount of anisotropy is between $1:1$ and $2:1$, two samples are taken along ths line. At higher ratios of anisotropy, more samples are taken along the axis.
+
+This scheme allows the line of anisotropy to run in any direction, and so does not have the limitations of summed-area tables. It also requires no more texture memory than mipmaps do, since it uses the mipmap algorithm to do its sampling.
+
+### Volume Textures
+
+A direct extension of image textures is three-dimensional image data that is accessed by $(u,v,w)$. A related idea is to represent volumetric lights in this form. The illumination on a point on a surface is found by finding the value for its location inside this volume, combined with a directions for the light.
+
+Most GPUs support mipmapping for volume textures. Since filtering inside a single mipmap level of a volume texture involves trilinear interpolation, filtering between mipmap levels requires `quadrilinear interpolation`. Since this involves averaging the results from 16 texels, precision problems may result, which can be solved by using a higher-precision volume texture.
+
+Although volume textures have significantly higher storage requirements and are more expensive to filter, they do have some unique advantages. The complex process of finding a good tewo-dimensional parameterizaton for the three-dimensional mesh can be skipped, since three-dimensional location can be used directly as texture coordinates. This avoids the distortion and seam problems that commonly occur with the two-dimensional parameterizations.
+
+Using volume texture for surface texturing is extremely inefficient, since the vast majority of samples are not used.
+
+### Cube Maps
+
+Another type of texture is the `cube texture` or `cube map`, which has six square textures, each of which is associated with one face of a cube. A cube map is accessed with a three-component texture coordinate vector that specifies the direction of a ray pointing from the center of the cubde outward.
+
+Cube maps are useful for representing values wich are a function of direction; they are most commonly used for environment mapping.
+
+### Texture Representation
+
+There are several ways to improve performance when handling many textures in an application. This section focus on texture atlases, texture arrays, and bindless textures, all of which aim to avoid the costs of changing textures while rendering.
+
+To be able to batch up as much work as possible for the GPU, it is generally preferred to change state as little as possible. To that end, one may put several images into a single larger texture, called a `texture atlas`. Care also needs to be taken with mipmnap generation and access, since the upper levels of the mipmap may encompass several separate, unrelated shapes.
+
+One difficulty with using an atlas is wrapping/repeat and mirror modes, which will not properly affect a subtexture but only the texture as a whole. Another problem can occur when generating mipmaps for an atlas, where one subtexture can bleed into another. However, this can be avoided by generating the mipmap hierarchy for each subtexture separately before placing them into a large texture atlas and using power-of-two resolutions for the subtextures.
+
+A simpler solution to these issues is to use an API construction called `texture arrays`, which completely avoids any problems with mipmapping and repeat modes. All subtextures in a texture array need to have the same dimensions, format, mipmap hierarchy, and MSAA settings. Like a texture atlas , setpup is only done once for a texture array, and then any array element can be accessed using an index in the shader. This can be $5 \times$ faster than binding each subtexture.
+
+A feature that can also help avoid state change costs is API support for `bindless textures`. Without bindless textures, a texture is bound to a specific texture unit the API. One problem is the upper limit on the number of texture units, which complicates matters for the programmer. The driver makes sure that the texture is resident on the GPU side. With bindless textures, there is no upper bound on the number of textures, because each texture is associated by just a 64-bit pointer, sometimes called a `handle`, to its data structure. These handles can be accessed in many different ways, e.g., throung uniforms, through varying data, from other textures, or from a shader storage buffer object(SSBO). The application needs to ensure that the textures are resident on the GPU side. Bindless textures avoid any type of binding cost in the driver, which makes rendering faster.
+
+### Texture Compression
+
+One solution that directly attacks memory and bandwidth problems and caching concerns is fixed-rate `texture compression`.
