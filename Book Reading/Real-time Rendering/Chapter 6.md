@@ -224,4 +224,55 @@ A feature that can also help avoid state change costs is API support for `bindle
 
 ### Texture Compression
 
-One solution that directly attacks memory and bandwidth problems and caching concerns is fixed-rate `texture compression`.
+One solution that directly attacks memory and bandwidth problems and caching concerns is fixed-rate `texture compression`. By having the GPU decode compressed textures on the fly, a texture can require less texture memory and so increase the effective cache size. At least as significant, such textures are more efficient to used, as theyconsume less memory bandwidth when accessed. A related but different use case is to add compression in order to afford larget textures.
+
+There are a variety of image compression methods used in image file formats such as JPEG and PNG, but it is costly to implement decoding for these in hardware. It has the advantages of creating a compressed image that is fixed in size, has independently encoded pieces, and is simple (and therefore fast) to decode. Each compressed part of the image can be dealt with independently from the others. There are no shared lookup tables or other dependencies, which simplifies decoding.
+
+The main drawback of these compression schemes is that they are lossy. That is the original image usually cannot be retrieved from the compressed version. If a tile has a larget number of distinct values in it, there will be some loss. In practice, these compression schemes generally give acceptable image fidelity if correctly used.
+
+One of the problems with BC1-BC5 is that all the colors used for a block lie on a straight line in RGB space. BC6H and BC7 support more lines and so can provide higher quality.
+
+(Unfinished)
+
+## Proceduarl Texturing
+
+Given a texture-space location, performing an image lookup is one way of generating texture values. Another is to evaluate a function, thus defining a `procedural texture`.
+
+Although procedural textures are commonly used in offline rendering applications, image textures are far more common in real-time rendering.  This is due to the extremely high efficieny of the image texturing hardware in modern GPUs, which can perform many billions of texture accesses in a second. However, GPU architectures are evolving toward less expensive computation and (relatively) more costly memory access. These trend have made procedural textures find greater use in real-time applications.
+
+Volume textures are a particularly attractive application for procedural texturing, given the high storage costs of volume image textures. Such textures can be synthesized by a variety of techniques. One of the most common is using one or more noise functions to generate values. A noise function is often sampled at successive powers-of-two frequencies, called `octaves`. Each octave is given a weight, usually falling as the frequency increases, and the sum of these weighted samples is called a `turbulence` function.
+
+Because of the cost of evaluating the noise function, the lattice points in the three-dimensional array are often precomputed and used to interpolate texture values. There are various methods that use color buffer blending to rapidly generate these arrays.
+
+Other procedural methods are possible. For example, a `cellular texture` is formed by measuring distances from each location to a set of "feature points" scattered through space.
+
+Another type of procedural texture is the result of a physical simulation or some other interactive process, such as water ripples or spreading cracks. In such cases, procedural textures can produce effectively infinite variability inreaction to dynamic conditions.
+
+When generating a procedural two-dimensional texture, parameterization issues can pose even more difficulties than for authored textures, where stretching or seam artifacts can be manually touched up or worked around. One solution is to avoid parameterization completely by synthesizing textures directly onto the surface. Performing this operation on complex surfaces is technically challenging and is an active area of research.
+
+Antialiasing procedural texture is both harder and easier than antialiasing image textures. On one hand, precomputation methods such as mipmapping are not available, put the burden on the programmer. On the other, the procedural texture author has "inside information" about the texture content and so can tailor it to avoid aliasing. This is particularly true for procedural textures created by summing multiple noise functions. The frequency of each noise function is known, so any frequencies that would cause aliasing can be discarded, actually making the computation less costly.
+
+## Texture Animation
+
+The image applied to a surface does not have to be static. The texture coordinates need not to be static, either. 
+
+More elaborate effects can be created by applying a matrix to the texture coordinates. By using texture blending techniques, one can realize other animated effects.
+
+## Material Mapping
+
+A common use of a texture is to modify a material property affecting the shading equation. Real-world objects usually have material properties that vary over their surface. To simulate such objects, the pixel shader can read values from textures and use them to modify the material parameters before evaluating the shading equation.
+
+The parameter that is most often modified by a texture is the surface color. This texture is known as an `albedo color map` or `diffuse color map`.
+
+The use of textures in materials can be taken further. Instead of modifying a parameter in an equation, a texture can be used to control the flow and function of the pixel shader itself. Twoof more material with different shading equations and parameters could be applied to a surface by having one texture specify which areas of the surface have which material, causing different code to be executed for each.
+
+Shading model inputs such as surface color have a linear relationship to the final color output from the shader. Thus, texture containing such inputs can be filtered with standard techniques. Texture containing nonlinear shading inputs, such as roughness or bump mapping, require a bit more care to avoid aliasing. Filtering techniques that take account of the shading equation can improve results for such textures.
+
+## Alpha Mapping
+
+Tha alpha value can be employed for many effects using alpha blending or alpha testing, such as efficiently rendering foliage, explsions, and distant objects, to name but a few.
+
+One texture-related effect is decaling. Typically, a clamp corresponder function is used with a tranparent border to apply a single copy of the decal to the surface.
+
+A similar application of alpha is in making cutouts.
+
