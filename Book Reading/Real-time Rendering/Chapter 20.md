@@ -20,4 +20,20 @@ The buffers used to store surface properties are commonly called `G-buffers`, al
 
 After the pass creating the G-buffers, a separate process is used to compute the effect of illumination. One method is to apply each light one by one, using the G-buffers to compute its effect. This process is about the most inefficient way to use G-buffers, since every stored pixel is accessed for every light, similar to how basic forward rendering applies all lights to all surface fragments. Such an approach can end up being slower than forward shading, due to the extra cost of writing and reading the G-buffers.
 
-As a start on improving performance, we could determine the screen bounds of a light volume and use them to draw a screen-space quadrilateral that covers a smaller part of the image.
+As a start on improving performance, we could determine the screen bounds of a light volume and use them to draw a screen-space quadrilateral that covers a smaller part of the image. In this way, pixel processing is reduced, often significantly. We can also use the third screen dimension, z-depth. By drawing a rough sphere mesh encompassing the volume, we can trim the sphere's area of effect further still.
+
+Long shaderes with dynamic branches often run considerably more slowly, so a large number of smaller shaders can be more efficient, but also require more work to generate and manage. Since all shading functions are down in a single pass with forward shading, it is more likely that the shader will need to change when the next object is rendered, leading to inefficiency from swapping shaders.
+
+The deferred shading method of rendering allows a strong separation between lighting and material definition. Each shader is focused on parameter extraction of lighting, but not both. Shorter shaders run faster, both due to length and the ability to optimize them. The number of registers used in a shader determines occupancy. This decoupling of lighting and material also simplifies shader system management.
+
+With each light handled fully in a single pass, deferred shading permits having only one shadow map in memory at a time. However, this advantage disappear with the more complex light assignment schemes, as lights are evaluated in groups.
+
+Basic deferred shading supports just a single material shader with a fixed set of parameters, which constrains what material models can be portrayed. One way to support differet material descriptions is to store a material ID or mask per pixel in some given field. The shader can then perform different computations based on the G-buffer contents. This approach could also modify what is stored in the G-buffers, based on this ID or mask value.
+
+Basic deferred shading has some other drawbacks. G-buffer video memory requirement can be significant, as can the related bandwidth costs in repeatedly accessing these buffers. We can mitigate these costs by storing lower-precision values or compressing the data. 
+
+Two important technical limitations of deferred shading involve **transparency** and **antialiasing**.
+
+Transparency is not supported in a basic deferred shading system, since we can store only one surface per pixel. One solution is to use forward rendering for transparent objects after the opaque surfaces are rendered with deferred shading. For early deferred systems this meant that all lights in a scene had to be applied to each transparent object, a costly process, or other sximplifications had to be performed. while it is possible to now store lists of transparent surfaces for pixels and use a pure deferred approach, the norm is to mix deferred and forward shading as desired for transparency and other effects.
+
+Deferred shading could store all $N$ samples per element in the G-buffers to perform antialiasing, but the increases in memory cost, fill rate, and computation make this approach expensive. To overcome this limitation, Shishkovtsov uses an edge detection method for approximating edge coverage computations(?). Other morphological post-processing methods for 
