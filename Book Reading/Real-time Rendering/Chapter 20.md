@@ -36,4 +36,20 @@ Two important technical limitations of deferred shading involve **transparency**
 
 Transparency is not supported in a basic deferred shading system, since we can store only one surface per pixel. One solution is to use forward rendering for transparent objects after the opaque surfaces are rendered with deferred shading. For early deferred systems this meant that all lights in a scene had to be applied to each transparent object, a costly process, or other sximplifications had to be performed. while it is possible to now store lists of transparent surfaces for pixels and use a pure deferred approach, the norm is to mix deferred and forward shading as desired for transparency and other effects.
 
-Deferred shading could store all $N$ samples per element in the G-buffers to perform antialiasing, but the increases in memory cost, fill rate, and computation make this approach expensive. To overcome this limitation, Shishkovtsov uses an edge detection method for approximating edge coverage computations(?). Other morphological post-processing methods for 
+Deferred shading could store all $N$ samples per element in the G-buffers to perform antialiasing, but the increases in memory cost, fill rate, and computation make this approach expensive. To overcome this limitation, Shishkovtsov uses an edge detection method for approximating edge coverage computations(?). Other morphological post-processing methods for antialiasing can also be used, as well as temporal antialiasing. Several deferred MSAA avoid computing the shade for every sample by detecting which pixels or tiles have edges in them. 
+
+Even with these limitations, deferred shading is a practical rendering method used in commercial programs. It naturally separates geometry from shading, and lighting from materials, meaning that each element can be optimized on its own. One area of particular interest is decal rendering, which has implications for any rendering pipeline.
+
+## Decal Rendering
+
+A decal is some design element, such as a picutre or other texture, applied on top of a surface. Decal are often seen in video games in such forms as tire marks, bullet holes, or player tags sprayed onto surface. Decals are used in other applications for applying logos, annotations or other content. For terrain systems or cities, for example, decals can allow artists to avoid obvious repetition by layering on detailed textures, or by recombining various patterns in different ways.
+
+A decal can blend with the underlying material in a variety of ways. It might modify the underlying color but not the bump map. Alternately, it might replace just the bump mapping, such as an embossed logo does. It could define a different material entirely. The variations have implications for how forward and degerred shading systems store and process decals. 
+
+To begin, the decal must be mapped to the surface, like any other texture. Since multiple texture coordinates can be stored at each vertex, it is possible to bind a few decals to a single surface. This approach is limited, since the number of values that can be saved per vertex is relatively low. Each decal needs its own set of texture coordinates. A large number of small decals applied to a surface would mean saving these texture coordinates at every vertex, even though each decal affects only a few triangles in the mesh.
+
+To render decals attached to a mesh:
+
+One approach is to have the pixel shader sample every decal and blend one atop the next. This complicates the shader, and if the number of decals varies over time, frequent recompilation or other measures may be required.
+
+Another approach that keeps the shader independent from the decal system is to render the mesh again for each decal, layering and blending each pass over the previous one. If a decal spans just a few triangles, a separate, shorter index buffer can be created to render just this 
