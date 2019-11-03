@@ -52,4 +52,18 @@ To render decals attached to a mesh:
 
 One approach is to have the pixel shader sample every decal and blend one atop the next. This complicates the shader, and if the number of decals varies over time, frequent recompilation or other measures may be required.
 
-Another approach that keeps the shader independent from the decal system is to render the mesh again for each decal, layering and blending each pass over the previous one. If a decal spans just a few triangles, a separate, shorter index buffer can be created to render just this 
+Another approach that keeps the shader independent from the decal system is to render the mesh again for each decal, layering and blending each pass over the previous one. If a decal spans just a few triangles, a separate, shorter index buffer can be created to render just this decal's sub-mesh. 
+
+One other decal system, modifying this texture provides a simple "set it and forget it" solution. This baked solution avoids shader complexity and wasted overdraw, but at the cost of texture management and memory use.
+
+Rendering the decals separately is the norm, as different resolutions can then be applied to the same surface, and the base texture can be reused and repeated without needing additional modified copies in memory.
+
+A popular solution for static or rigid objects is to treat the decal as a texture orthographically projected through a limited volume.
+
+Deferred shading excels at rendering such decals. Instead of needing to illuminate and shade each decal, as with standard forward shading, the decal's effect can be applied to the G-buffers, avoiding the sahding overdraw that occurs with forward shading. 
+
+Several problems with decals in a deferred setting:
+
+Blending is limited to what operations are available during the merge stage in the pipeline. Another concern is fringing along silhouette edges of decals, caused by gradient errors due to using screen-space information projected back into world space.
+
+Decals can be used for dynamic elements 
