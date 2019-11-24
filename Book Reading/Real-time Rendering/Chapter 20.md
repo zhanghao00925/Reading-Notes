@@ -67,3 +67,7 @@ Several problems with decals in a deferred setting:
 Blending is limited to what operations are available during the merge stage in the pipeline. Another concern is fringing along silhouette edges of decals, caused by gradient errors due to using screen-space information projected back into world space.
 
 Decals can be used for dynamic elements 
+
+# Chapter 20
+
+对于简单场景——相对少的几何，基本的材质——我们可以使用标准GPU管线来绘制图片，而不用担心保持帧率。只有当一个或几个元素的绘制代价变得非常高昂，我们才需要使用更多复杂的技术来控制开销。在之前的章节中，我们着眼于从下游的进一步处理中剔除三角形和网格。这一章节，我们集中于降低计算材质和光源开销的技术。
